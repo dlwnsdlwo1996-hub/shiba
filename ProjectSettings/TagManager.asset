@@ -10,6 +10,7 @@ TagManager:
   - Blue
   - Purple
   - Item
+  - ItemBox
   layers:
   - Default
   - TransparentFX
