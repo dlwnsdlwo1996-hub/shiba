@@ -1,51 +1,32 @@
 using UnityEngine;
-using System.Collections;
 
 public class PlayerMovement : MonoBehaviour
 {
-    [Header("ì´ë™ ì„¤ì •")]
+    [Header("ÀÌµ¿ ¼³Á¤")]
     public float stepSize = 1.5f;
     private int currentLane = 0;
     public int maxLane = 2;
 
-    [Header("ì”ìƒ ì„¤ì •")]
-    public float ghostDelay = 0.05f;
-    public float ghostDestroyTime = 0.2f;
-
-    [Header("ìƒ‰ìƒ ë°ì´í„°")]
+    [Header("»ö»ó µ¥ÀÌÅÍ")]
     public string currentTag = "Red";
     public string[] colors = { "Red", "Yellow", "Green", "Blue", "Purple" };
 
     private Animator anim;
-    private SpriteRenderer sr;
 
     void Awake()
     {
         anim = GetComponent<Animator>();
-        sr = GetComponent<SpriteRenderer>();
-        gameObject.tag = "Red"; // ì‹œì‘ íƒœê·¸ ì´ˆê¸°í™”
     }
 
     void Start()
     {
-        SetColor(0);
+        SetColor(0); // ½ÃÀÛ ½Ã »¡°£»ö(0¹ø) ¼³Á¤
     }
 
     void Update()
     {
-        // ì´ë™ ì‹œ ì”ìƒ ë£¨í‹´ ì¶”ê°€
-        if (Input.GetKeyDown(KeyCode.UpArrow) && currentLane < maxLane) 
-        { 
-            currentLane++; 
-            UpdatePosition(); 
-            StartCoroutine(CreateTrailRoutine());
-        }
-        if (Input.GetKeyDown(KeyCode.DownArrow) && currentLane > -maxLane) 
-        { 
-            currentLane--; 
-            UpdatePosition(); 
-            StartCoroutine(CreateTrailRoutine());
-        }
+        if (Input.GetKeyDown(KeyCode.UpArrow) && currentLane < maxLane) { currentLane++; UpdatePosition(); }
+        if (Input.GetKeyDown(KeyCode.DownArrow) && currentLane > -maxLane) { currentLane--; UpdatePosition(); }
     }
 
     void UpdatePosition()
@@ -53,33 +34,10 @@ public class PlayerMovement : MonoBehaviour
         transform.position = new Vector3(transform.position.x, currentLane * stepSize, 0);
     }
 
-    // íŒ€ì›ì˜ ì”ìƒ ìƒì„± ë¡œì§ í†µí•©
-    IEnumerator CreateTrailRoutine()
-    {
-        for (int i = 0; i < 3; i++)
-        {
-            GameObject ghost = new GameObject("GhostTrail");
-            ghost.transform.position = transform.position;
-            ghost.transform.rotation = transform.rotation;
-            ghost.transform.localScale = transform.localScale;
-
-            SpriteRenderer ghostSR = ghost.AddComponent<SpriteRenderer>();
-            ghostSR.sprite = sr.sprite;
-            ghostSR.color = new Color(1, 1, 1, 0.4f);
-            ghostSR.sortingOrder = sr.sortingOrder - 1;
-
-            Destroy(ghost, ghostDestroyTime);
-            yield return new WaitForSeconds(ghostDelay);
-        }
-    }
-
+    // Collision¿¡¼­ ´øÁ®ÁÖ´Â ¼ıÀÚ¸¦ ¹Ş¾Æ¼­ Ã³¸®
     public void SetColor(int index)
     {
-        if (index >= 0 && index < colors.Length)
-        {
-            currentTag = colors[index];
-            gameObject.tag = currentTag; // ì˜¤ë¸Œì íŠ¸ íƒœê·¸ ì‹¤ì œ ë³€ê²½
-            if (anim != null) anim.SetInteger("ColorIndex", index);
-        }
+        currentTag = colors[index];
+        if (anim != null) anim.SetInteger("ColorIndex", index);
     }
 }
