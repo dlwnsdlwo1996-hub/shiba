@@ -1,32 +1,83 @@
 using UnityEngine;
+using UnityEngine.UI;
+using System.Collections;
 
 public class PlayerCollision : MonoBehaviour
 {
     public GameObject explosionPrefab;
 
-    [Header("»ýÁ¸ ½Ã½ºÅÛ")]
+    [Header("ìƒì¡´ ë° ê²Œì´ì§€")]
     public int currentHp = 3;
-    public int maxHp = 3;
-
-    [Header("Á¡¼ö ¹× °ÔÀÌÁö")]
-    public int score = 0;
     public float gauge = 0f;
     public float gaugePerWall = 10f;
+    public Slider feverSlider;
+    public int score = 0;
 
-    private ScrollingBackground bg;
+    [Header("ì•„ì´í…œ ë° ë¬´ì ")]
+    public bool hasItem = false;
+    public bool isInvincible = false;
+    public float invincibleDuration = 3.0f;
+    private float invincibleTimer = 0f;
+    private bool isSlowingDown = false;
 
-    void Start()
+    private SpriteRenderer spriteRenderer;
+
+    void Start() => spriteRenderer = GetComponent<SpriteRenderer>();
+
+    void Update()
     {
-        bg = Object.FindFirstObjectByType<ScrollingBackground>();
+        if (feverSlider != null) feverSlider.value = gauge;
+        if (Input.GetKeyDown(KeyCode.LeftControl) && hasItem && !isInvincible) UseItem();
+        if (isInvincible) HandleInvincible();
+    }
+
+    void HandleInvincible()
+    {
+        invincibleTimer -= Time.unscaledDeltaTime;
+        float hue = Mathf.PingPong(Time.time * 3f, 1f);
+        spriteRenderer.color = Color.HSVToRGB(hue, 0.9f, 1f);
+
+        if (invincibleTimer <= 0) StartCoroutine(SmoothStopInvincible());
+    }
+
+    void UseItem()
+    {
+        hasItem = false;
+        isInvincible = true;
+        invincibleTimer = invincibleDuration;
+        Time.timeScale = 1.8f;
+    }
+
+    IEnumerator SmoothStopInvincible()
+    {
+        isInvincible = false;
+        isSlowingDown = true;
+        spriteRenderer.color = Color.white;
+        float elapsed = 0f;
+        while (elapsed < 1.2f)
+        {
+            elapsed += Time.unscaledDeltaTime;
+            Time.timeScale = Mathf.Lerp(0.4f, 1.0f, elapsed / 1.2f);
+            yield return null;
+        }
+        Time.timeScale = 1.0f;
+        isSlowingDown = false;
     }
 
     private void OnTriggerEnter2D(Collider2D other)
     {
+        if (other.CompareTag("ItemBox"))
+        {
+            if (!hasItem) hasItem = true;
+            Destroy(other.gameObject);
+            return;
+        }
+
         PlayerMovement pm = GetComponent<PlayerMovement>();
         if (pm == null) return;
 
-        // ¹«Àû Ã¼Å© Á¦°Å: ¿ÀÁ÷ ÅÂ±×°¡ ÀÏÄ¡ÇÒ ¶§¸¸ ¼º°ø Ã³¸®
-        if (other.CompareTag(pm.currentTag))
+        // ì„±ê³µ íŒì •: ìƒ‰ìƒ ì¼ì¹˜ OR ë¬´ì  ìƒíƒœ
+        if (other.CompareTag(pm.currentTag) || isInvincible || isSlowingDown)
         {
             ProcessSuccess(other, pm);
         }
@@ -38,11 +89,25 @@ public class PlayerCollision : MonoBehaviour
 
     void ProcessSuccess(Collider2D other, PlayerMovement pm)
     {
-        score += 100;
+        if (BossManager.Instance != null && BossManager.Instance.IsBossActive())
+        {
+            gauge = Mathf.Min(100f, gauge + 10f); // ë³´ìŠ¤ì „ ê²Œì´ì§€ íšŒë³µ
+            score += 200;
+        }
+        else
+        {
+            score += 100;
+            gauge = Mathf.Min(100f, gauge + gaugePerWall);
+            if (gauge >= 100f) BossManager.Instance.StartBossRaid();
+        }
 
-        // °ÔÀÌÁö »ó½Â ·ÎÁ÷¸¸ À¯Áö (ÃßÈÄ ÇÊ»ì±â µîÀ¸·Î È°¿ë °¡´É)
-        gauge = Mathf.Min(100f, gauge + gaugePerWall);
+        SpawnExplosion(other);
+        Destroy(other.gameObject);
+        if (!isInvincible && !isSlowingDown) pm.SetColor(Random.Range(0, 5));
+    }
 
+    void SpawnExplosion(Collider2D other)
+    {
         if (explosionPrefab != null)
         {
             GameObject effect = Instantiate(explosionPrefab, other.transform.position, Quaternion.identity);
@@ -50,25 +115,12 @@ public class PlayerCollision : MonoBehaviour
             main.startColor = other.GetComponent<SpriteRenderer>().color;
             Destroy(effect, 1f);
         }
-        Destroy(other.gameObject);
-
-        // ´ÙÀ½ »ö»ó ¼³Á¤
-        pm.SetColor(Random.Range(0, 5));
     }
 
     void ProcessFailure(Collider2D other)
     {
         currentHp--;
         Destroy(other.gameObject);
-
-        if (currentHp <= 0)
-        {
-            Time.timeScale = 0f;
-            Debug.Log("°ÔÀÓ ¿À¹ö");
-        }
-        else
-        {
-            Debug.Log("³²Àº Ã¼·Â: " + currentHp);
-        }
+        if (currentHp <= 0) Time.timeScale = 0f;
     }
 }
